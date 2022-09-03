@@ -30,7 +30,7 @@
         </plugin>
 
         <plugin name="four_diff_controller" filename="libgazebo_ros_ackerman.so">
-            <updateRate>100.0</updateRate>
+            <updateRate>0.0</updateRate>
             <robotNamespace>$(arg robot_namespace)</robotNamespace>
             <leftFrontJoint>front_left_wheel</leftFrontJoint>
             <rightFrontJoint>front_right_wheel</rightFrontJoint>

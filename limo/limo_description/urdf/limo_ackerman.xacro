@@ -96,9 +96,9 @@
         </visual>
         <collision>
             <origin xyz="0 ${wheel_length/2} 0" rpy="1.57 0 0" />
-          <geometry>
-              <cylinder length="${wheel_length}" radius="${wheel_radius}" />
-          </geometry>
+            <geometry>
+                <cylinder length="${wheel_length}" radius="${wheel_radius}" />
+            </geometry>
         </collision>
     </link>
     <joint name="rear_left_wheel" type="continuous">
@@ -120,18 +120,18 @@
                 <mesh filename="package://limo_description/meshes/limo_wheel.dae" />
             </geometry>
         </visual>
-            <collision>
-                <origin xyz="0 ${wheel_length/2} 0" rpy="1.57 0 0" />
-              <geometry>
-                  <cylinder length="${wheel_length}" radius="${wheel_radius}" />
-              </geometry>
-            </collision>
-        </link>
+        <collision>
+            <origin xyz="0 ${wheel_length/2} 0" rpy="1.57 0 0" />
+            <geometry>
+                <cylinder length="${wheel_length}" radius="${wheel_radius}" />
+            </geometry>
+        </collision>
+    </link>
 
-        <joint name="rear_right_wheel" type="continuous">
-            <parent link="base_link"/>
-            <child link="rear_right_wheel_link"/>
-            <origin xyz="${-wheelbase/2} ${-track/2} ${wheel_vertical_offset}" rpy="${M_PI} 0 0" />
-            <axis xyz="0 -1 0"/>
-        </joint>
+    <joint name="rear_right_wheel" type="continuous">
+        <parent link="base_link"/>
+        <child link="rear_right_wheel_link"/>
+        <origin xyz="${-wheelbase/2} ${-track/2} ${wheel_vertical_offset}" rpy="${M_PI} 0 0" />
+        <axis xyz="0 -1 0"/>
+    </joint>
 </robot>

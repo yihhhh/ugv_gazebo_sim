@@ -1,0 +1,8 @@
+<launch>
+<arg name="gui" default="False" />
+<param name="robot_description" textfile="/home/zijianguo/Codes/parking/robust-safe-rl/envs/Bullet-Safety-Gym/bullet_safety_gym/envs/data/robots/racecar/limo_ackerman.urdf" />
+<param name="use_gui" value="$(arg gui)"/>
+<node name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher" />
+<node name="robot_state_publisher" pkg="robot_state_publisher" type="state_publisher" />
+<!-- <node name="rviz" pkg="rviz" type="rviz" args="/home/viki/catkin_ws/install/share/myrobot_description/myrobot.rviz" required="true" /> -->
+</launch>
