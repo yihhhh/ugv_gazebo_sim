@@ -60,7 +60,7 @@ class Dict2Obj(object):
 
 
 class GazeboCarNavEnv(GazeboEnv):
-    def __init__(self, robot='Car', task='Goal', level=1, seed=0, config=DEFAULT_CONFIG):
+    def __init__(self, level=1, seed=0, config=DEFAULT_CONFIG):
         super().__init__()
 
         if level == 1:
