@@ -7,7 +7,7 @@ from tqdm import tqdm
 import gym
 import gym_gazebo
 
-from mbrl import SafeMPC, RegressionModelEnsemble, CostModel
+from gym_gazebo import SafeMPC, RegressionModelEnsemble, CostModel
 import utils
 
 def run(config, args):
