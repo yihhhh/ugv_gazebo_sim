@@ -8,10 +8,9 @@ import gym
 import gym_gazebo
 
 from mbrl import SafeMPC, RegressionModelEnsemble, CostModel
-from utils.logx import EpochLogger
-from utils.run_utils import setup_logger_kwargs, load_config
+import utils
 
-def run(logger, config, args):
+def run(config, args):
     # setup environment
     env = gym.make("GazeboCarNav-v0", seed=args.seed, config=config['env_config'])
     env.reset()
@@ -27,13 +26,14 @@ def run(logger, config, args):
         cost_config["load"] = True
         cost_config["load_folder"] = args.load
     if args.save:
+        save_dir = './checkpoints/{0}/{1}'.format(args.group_id, args.exp_id)
         dynamic_config["save"] = True
-        dynamic_config["save_folder"] = logger.output_dir
+        dynamic_config["save_folder"] = save_dir
         cost_config["save"] = True
-        cost_config["save_folder"] = logger.output_dir
+        cost_config["save_folder"] = save_dir
 
     config["arguments"] = vars(args)
-    logger.save_config(config)
+    wandb.config.update(config)
 
     state_dim, action_dim = env.observation_size, env.action_size
     if args.ensemble>0:
@@ -75,6 +75,8 @@ def run(logger, config, args):
     # Main loop: collect experience in env and update/log each epoch
     total_len = 0 # total interactions
     total_epi = 0
+    total_ep_ret = 0
+    total_ep_cost = 0
     for epoch in tqdm(range(args.epoch)): # update models per epoch
         for test_episode in range(args.episode): # collect data for episodes length
             obs, ep_ret, ep_cost, done = env.reset(), 0, 0, False
@@ -87,23 +89,24 @@ def run(logger, config, args):
                 if args.render:
                     env.render()
                 ep_ret += reward
-                total_len += 1
+                total_ep_ret += reward
                 ep_cost += info["cost"]
+                total_ep_cost += info["cost"]
+                total_len += 1
                 if not info["goal_met"] and not done:
                     x = np.concatenate((obs, action))
                     y = obs_next #- obs
                     dynamic_model.add_data_point(x, y)
                     cost = 1 if info["cost"]>0 else 0
                     cost_model.add_data_point(obs_next, cost)
-                obs = obs_next     
-            logger.store(EpRet=ep_ret, EpCost=ep_cost)
-            logger.log_tabular('Epoch', epoch)
-            logger.log_tabular('Episode', total_epi)
-            logger.log_tabular('EpRet', average_only=True) #with_min_and_max = False
-            logger.log_tabular('EpCost', average_only=True)
-            logger.log_tabular('TotalEnvInteracts', total_len)
-            logger.log_tabular('Time', time.time()-start_time)
-            logger.dump_tabular()
+                obs = obs_next 
+            wandb.log({"EpRet": ep_ret, "EpCost": ep_cost})
+            wandb.log({"Epoch": epoch, 
+                       "Episode": total_epi, 
+                       "AvgEpRet": total_ep_ret/total_len, 
+                       "AvgEpCost": total_ep_cost/total_len,
+                       "TotalEnvInteracts": total_len,
+                       "Time": time.time()-start_time})
             total_epi += 1
         # training the model
         if not args.test:
@@ -114,6 +117,8 @@ def run(logger, config, args):
 if __name__ == '__main__':
     
     parser = argparse.ArgumentParser()
+    parser.add_argument('--group_id','-g', default='trial', help="group id of wandb")
+    parser.add_argument('--exp_id','-e', default='trial', help="experiment id of wandb")
     parser.add_argument('--robot', type=str, default='point', help="robot model, selected from `point` or `car` ")
     parser.add_argument('--level', type=int, default=1, help="environment difficulty, selected from `1` or `2`, where `2` would be more difficult than `1`")
     parser.add_argument('--epoch', type=int, default=60, help="maximum epochs to train")
@@ -131,9 +136,9 @@ if __name__ == '__main__':
     parser.add_argument('--config', '-c', type=str, default='./config.yml', help="specify the path to the configuation file of the models")
 
     args = parser.parse_args()
-    logger_kwargs = setup_logger_kwargs(args.name, args.seed, args.dir)
-    logger = EpochLogger(**logger_kwargs)
+    print("Reading configurations ...")
+    utils.wandb_init("limo_project", args.group_id, args.exp_id)
     config = load_config(args.config)
 
-    run(logger, config, args)
+    run(config, args)
     
