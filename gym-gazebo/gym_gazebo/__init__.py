@@ -1,4 +1,4 @@
-from mbrl import SafeMPC, RegressionModelEnsemble, CostModel
+from .mbrl import SafeMPC, RegressionModelEnsemble, CostModel
 
 import logging
 from gym.envs.registration import register

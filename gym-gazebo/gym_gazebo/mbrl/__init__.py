@@ -6,9 +6,9 @@
 @Description:
 '''
 
-from mbrl.controllers import MPC as MPC
-from mbrl.controllers import SafeMPC
-from mbrl.models.model import RegressionModel
-from mbrl.models.ensemble import RegressionModelEnsemble
-from mbrl.models.constraint_model import CostModel
+from .controllers import MPC as MPC
+from .controllers import SafeMPC
+from .models.model import RegressionModel
+from .models.ensemble import RegressionModelEnsemble
+from .models.constraint_model import CostModel
 

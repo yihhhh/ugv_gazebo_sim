@@ -11,7 +11,7 @@ import os
 import torch
 import torch.nn as nn
 from torch.utils.data import TensorDataset, DataLoader, random_split
-from mbrl.models.base import MLPRegression, MLPCategorical, CUDA, CPU, combined_shape, DataBuffer
+from .base import MLPRegression, MLPCategorical, CUDA, CPU, combined_shape, DataBuffer
 
 DEFAULT_CONFIG = dict(
                 n_epochs=100,
