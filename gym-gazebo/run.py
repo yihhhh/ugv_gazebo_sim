@@ -138,7 +138,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
     print("Reading configurations ...")
     utils.wandb_init("limo_project", args.group_id, args.exp_id)
-    config = load_config(args.config)
+    config = utils.load_config(args.config)
 
     run(config, args)
     
