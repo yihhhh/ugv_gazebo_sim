@@ -8,7 +8,7 @@
 
 from .controllers import MPC as MPC
 from .controllers import SafeMPC
-from .models.model import RegressionModel
-from .models.ensemble import RegressionModelEnsemble
-from .models.constraint_model import CostModel
+from .models import RegressionModel
+from .models import RegressionModelEnsemble
+from .models import CostModel
 

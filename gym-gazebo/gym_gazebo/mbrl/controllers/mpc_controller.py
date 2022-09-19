@@ -8,7 +8,7 @@
 
 import numpy as np
 import copy
-from mbrl.optimizers import RandomOptimizer, CEMOptimizer
+from .optimizers import RandomOptimizer, CEMOptimizer
 
 
 class MPC(object):
