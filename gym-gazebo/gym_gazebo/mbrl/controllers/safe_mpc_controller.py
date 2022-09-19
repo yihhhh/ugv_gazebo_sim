@@ -7,7 +7,7 @@
 '''
 
 import numpy as np
-from .optimizers import RandomOptimizer, CEMOptimizer, RCEOptimizer
+from ..optimizers import RandomOptimizer, CEMOptimizer, RCEOptimizer
 
 class SafeMPC(object):
     optimizers = {"CEM": CEMOptimizer, "RANDOM": RandomOptimizer, "RCE": RCEOptimizer}
