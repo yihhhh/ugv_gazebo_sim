@@ -14,8 +14,9 @@ from gym_gazebo.envs.gazebo_env import GazeboEnv
 from gazebo_msgs.msg import ModelStates, ModelState
 from gazebo_msgs.srv import SetModelState
 from geometry_msgs.msg import Quaternion, PoseStamped
-import tf
-from tf.transformations import euler_from_quaternion
+# import tf
+# from tf.transformations import euler_from_quaternion
+from scipy.spatial.transform import Rotation as R
 
 from geometry_msgs.msg import Twist
 from std_srvs.srv import Empty
@@ -249,7 +250,7 @@ class GazeboCarNavEnv(GazeboEnv):
             self.robot_pos[0] = model_states.pose[-1].position.x
             self.robot_pos[1] = model_states.pose[-1].position.y
             q = model_states.pose[-1].orientation
-            _, _, yaw = euler_from_quaternion([q.x, q.y, q.z, q.w])
+            yaw = R.from_quat([q.x, q.y, q.z, q.w]).as_euler('z')
             self.robot_pos[2] = yaw
             # set robot vel
             self.robot_vel[0] = model_states.twist[-1].linear.x
