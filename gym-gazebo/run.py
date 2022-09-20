@@ -33,7 +33,8 @@ def run(config, args):
         cost_config["save_folder"] = save_dir
 
     config["arguments"] = vars(args)
-    wandb.config.update(config)
+    if not args.debug:
+        wandb.config.update(config)
 
     state_dim, action_dim = env.observation_size, env.action_size
     if args.ensemble>0:
@@ -100,13 +101,14 @@ def run(config, args):
                     cost = 1 if info["cost"]>0 else 0
                     cost_model.add_data_point(obs_next, cost)
                 obs = obs_next 
-            wandb.log({"EpRet": ep_ret, "EpCost": ep_cost})
-            wandb.log({"Epoch": epoch, 
-                       "Episode": total_epi, 
-                       "AvgEpRet": total_ep_ret/total_len, 
-                       "AvgEpCost": total_ep_cost/total_len,
-                       "TotalEnvInteracts": total_len,
-                       "Time": time.time()-start_time})
+            if not args.debug:
+                wandb.log({"EpRet": ep_ret, "EpCost": ep_cost})
+                wandb.log({"Epoch": epoch, 
+                        "Episode": total_epi, 
+                        "AvgEpRet": total_ep_ret/total_len, 
+                        "AvgEpCost": total_ep_cost/total_len,
+                        "TotalEnvInteracts": total_len,
+                        "Time": time.time()-start_time})
             total_epi += 1
         # training the model
         if not args.test:
@@ -119,6 +121,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--group_id','-g', default='trial', help="group id of wandb")
     parser.add_argument('--exp_id','-e', default='trial', help="experiment id of wandb")
+    parser.add_argument('--debug', action='store_true', help="debug mode, turn off wandb")
     parser.add_argument('--robot', type=str, default='point', help="robot model, selected from `point` or `car` ")
     parser.add_argument('--level', type=int, default=1, help="environment difficulty, selected from `1` or `2`, where `2` would be more difficult than `1`")
     parser.add_argument('--epoch', type=int, default=60, help="maximum epochs to train")
@@ -137,7 +140,8 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
     print("Reading configurations ...")
-    utils.wandb_init("limo_project", args.group_id, args.exp_id)
+    if not args.debug:
+        utils.wandb_init("limo_project", args.group_id, args.exp_id)
     config = utils.load_config(args.config)
 
     run(config, args)
