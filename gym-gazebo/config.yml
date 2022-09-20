@@ -1,5 +1,5 @@
 env_config:
-    action_repeat: 2,
+    action_repeat: 2
     max_episode_length: 100
     lidar_dim: 16  # total: 450
     use_dist_reward: False,
