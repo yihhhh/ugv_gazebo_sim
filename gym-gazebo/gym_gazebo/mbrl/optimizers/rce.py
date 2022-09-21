@@ -144,7 +144,6 @@ class RCEOptimizer(Optimizer):
             else:
                 idx = np.argsort(feasible_samples_reward)
                 elites = feasible_samples[idx][:self.num_elites]
-            #print(np.sort(costs)[:self.num_elites])
 
             new_mean = np.mean(elites, axis=0)
             new_var = np.var(elites, axis=0)

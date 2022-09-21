@@ -67,7 +67,7 @@ class GazeboCarNavEnv(GazeboEnv):
             self.x_range = [-2.5, 2.5]
             self.y_range = [-2.5, 2.5]
             self.region_bound = 4.0
-            self.cyls_num = 7
+            self.cyls_num = 3
             self.cyls = []
             for i in range(self.cyls_num):
                 self.cyls.append("cyl" + str(i))
@@ -256,6 +256,9 @@ class GazeboCarNavEnv(GazeboEnv):
             self.robot_vel[0] = model_states.twist[-1].linear.x
             self.robot_vel[1] = model_states.twist[-1].linear.y
             self.robot_vel[2] = model_states.twist[-1].angular.z
+            print("x: {0}\ny:{1}\nyaw:{2}\nvx:{3}\nvy:{4}\nva:{5}".format(
+                self.robot_pos[0], self.robot_pos[1], self.robot_pos[2], 
+                self.robot_vel[0],self.robot_vel[1], self.robot_vel[2]))
 
             # calculate reward
             reward += self.reward()

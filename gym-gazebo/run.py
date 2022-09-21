@@ -12,7 +12,9 @@ import utils
 
 def run(config, args):
     # setup environment
-    env = gym.make("GazeboCarNav-v0", seed=args.seed, config=config['env_config'])
+    env_name = "env_{}".format(args.env_id)
+    env_config = config['env_config']
+    env = gym.make("GazeboCarNav-v0", config=config['env_config'], layout=env_config[env_name])
     env.reset()
 
     # MPC and dynamic model config
@@ -40,12 +42,11 @@ def run(config, args):
     if args.ensemble>0:
         dynamic_config["n_ensembles"] = args.ensemble
     dynamic_model = RegressionModelEnsemble(state_dim+action_dim, state_dim, config=dynamic_config)
-    cost_model = CostModel(env, cost_config)
-    mpc_controller = SafeMPC(env, mpc_config, cost_model=cost_model, n_ensembles=dynamic_config["n_ensembles"])
+    mpc_controller = SafeMPC(env, mpc_config, layout=env_config[env_name], cost_fn=env.cost_fn, n_ensembles=dynamic_config["n_ensembles"])
 
     # Prepare random collected dataset
     start_time = time.time()
-    pretrain_episodes = 1000 if args.load is None else 10
+    pretrain_episodes = 100 if args.load is None else 10
     pretrain_max_step = 50
     print("collecting random episodes...")
     data_num = 0
@@ -59,8 +60,6 @@ def run(config, args):
             if not info["goal_met"] and not done:  # otherwise the goal position will change
                 x, y = np.concatenate((obs, action)), obs_next
                 dynamic_model.add_data_point(x, y)
-                cost = 1 if info["cost"]>0 else 0
-                cost_model.add_data_point(obs_next, cost)
                 data_num += 1
                 i += 1
             obs = obs_next
@@ -71,7 +70,6 @@ def run(config, args):
         dynamic_model.reset_model()
         print("resetting model")
         dynamic_model.fit(use_data_buf=True, normalize=True)
-    cost_model.fit()
 
     # Main loop: collect experience in env and update/log each epoch
     total_len = 0 # total interactions
@@ -98,8 +96,6 @@ def run(config, args):
                     x = np.concatenate((obs, action))
                     y = obs_next #- obs
                     dynamic_model.add_data_point(x, y)
-                    cost = 1 if info["cost"]>0 else 0
-                    cost_model.add_data_point(obs_next, cost)
                 obs = obs_next 
             if not args.debug:
                 wandb.log({"EpRet": ep_ret, "EpCost": ep_cost})
@@ -113,7 +109,6 @@ def run(config, args):
         # training the model
         if not args.test:
             dynamic_model.fit(use_data_buf=True, normalize=True)
-            cost_model.fit()
     env.close()
 
 if __name__ == '__main__':
@@ -122,8 +117,7 @@ if __name__ == '__main__':
     parser.add_argument('--group_id','-g', default='trial', help="group id of wandb")
     parser.add_argument('--exp_id','-e', default='trial', help="experiment id of wandb")
     parser.add_argument('--debug', action='store_true', help="debug mode, turn off wandb")
-    parser.add_argument('--robot', type=str, default='point', help="robot model, selected from `point` or `car` ")
-    parser.add_argument('--level', type=int, default=1, help="environment difficulty, selected from `1` or `2`, where `2` would be more difficult than `1`")
+    parser.add_argument('--env_id', type=int, default=0, help="environment index")
     parser.add_argument('--epoch', type=int, default=60, help="maximum epochs to train")
     parser.add_argument('--episode', type=int, default=10, help="determines how many episodes data to collect for each epoch")
     parser.add_argument('--render','-r', action='store_true', help="render the environment")

@@ -15,8 +15,14 @@ logger = logging.getLogger(__name__)
 #     # More arguments here
 # )
 
+# register(
+#     id='GazeboCarNav-v0',
+#     entry_point='gym_gazebo.envs:GazeboCarNavEnv',
+#     # More arguments here
+# )
+
 register(
     id='GazeboCarNav-v0',
-    entry_point='gym_gazebo.envs:GazeboCarNavEnv',
+    entry_point='gym_gazebo.envs:GazeboCarNavEnvSimple',
     # More arguments here
 )
