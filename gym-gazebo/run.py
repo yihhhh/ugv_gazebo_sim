@@ -10,6 +10,8 @@ import gym_gazebo
 from gym_gazebo import SafeMPC, RegressionModelEnsemble, CostModel
 import utils
 
+import wandb
+
 def run(config, args):
     # setup environment
     env_name = "env_{}".format(args.env_id)
@@ -36,7 +38,7 @@ def run(config, args):
 
     config["arguments"] = vars(args)
     if not args.debug:
-        wandb.config.update(config)
+        utils.wandb_update(config)
 
     state_dim, action_dim = env.observation_size, env.action_size
     if args.ensemble>0:
@@ -46,7 +48,7 @@ def run(config, args):
 
     # Prepare random collected dataset
     start_time = time.time()
-    pretrain_episodes = 100 if args.load is None else 10
+    pretrain_episodes = 20 if args.load is None else 10
     pretrain_max_step = 50
     print("collecting random episodes...")
     data_num = 0
