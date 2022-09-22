@@ -64,7 +64,7 @@ class GazeboCarNavEnvSimple(GazeboEnv):
         self.lvel_lim = self.config.lvel_lim  # linear velocity limit
         self.rvel_lim = self.config.rvel_lim  # rotational velocity limit
         self.ego_obs_dim = 6  # 7
-        self.obs_dim = self.ego_obs_dim + 1
+        self.obs_dim = self.ego_obs_dim + 2 + 1
         self.act_dim = 2
         self.observation_space = spaces.Box(-np.inf, np.inf, (self.obs_dim,), dtype=np.float32)
         self.action_space = spaces.Box(-1, 1, (self.act_dim,), dtype=np.float32)
@@ -149,6 +149,12 @@ class GazeboCarNavEnvSimple(GazeboEnv):
         # in world frame
         return np.concatenate([self.robot_pos, self.robot_vel])
     
+    def process_obs(self, reward):
+        # x, y, yaw, xdot, ydot, yawdot, goal_x, goal_y, reward
+        # in world frame
+        obs = np.concatenate([np.concatenate([self.robot_pos, self.robot_vel]), self.goal_pos, np.array([reward])])
+        return obs
+    
     def step(self, action):
 
         # Unpause simulation to make observation
@@ -200,7 +206,7 @@ class GazeboCarNavEnvSimple(GazeboEnv):
                 reward += 2.0
 
             # get ego obs
-            ego_obs = self.process_ego_obs()
+            obs = self.process_obs(reward)
 
             # unpause
             self._gazebo_unpause()
@@ -220,8 +226,7 @@ class GazeboCarNavEnvSimple(GazeboEnv):
 
         done = collision or out_bound or self.t == self.config.max_episode_length
         info = {"cost":cost, "goal_met":goal_met}
-        obs = np.concatenate([ego_obs, np.array([reward])])
-        # print("ego obs: {0}\nreward: {1}\ncost: {2}\ngoal_met: {3}\n\n".format(ego_obs, reward, cost, goal_met))
+        # print("obs: {0}\nreward: {1}\ncost: {2}\ngoal_met: {3}\n\n".format(obs, reward, cost, goal_met))
 
         return obs, reward, done, info
     
@@ -288,8 +293,7 @@ class GazeboCarNavEnvSimple(GazeboEnv):
         self.reset_robot_pos()
         self.reset_layout()
 
-        ego_obs = self.process_ego_obs()
-        obs = np.concatenate([ego_obs, np.array([0.0])])
+        obs = self.process_obs(0.0)
 
         # pause simulation
         self._gazebo_pause()

@@ -59,6 +59,7 @@ def run(config, args):
         while not done and i<pretrain_max_step:
             action = env.action_space.sample()
             obs_next, reward, done, info = env.step(action)
+            # print(obs_next, "\n", action, "\n\n")
             if not info["goal_met"] and not done:  # otherwise the goal position will change
                 x, y = np.concatenate((obs, action)), obs_next
                 dynamic_model.add_data_point(x, y)
@@ -125,9 +126,6 @@ if __name__ == '__main__':
     parser.add_argument('--render','-r', action='store_true', help="render the environment")
     parser.add_argument('--test', '-t', action='store_true', help="test the performance of pretrained models without training")
 
-    parser.add_argument('--seed', '-s', type=int, default=1, help="seed for Gym, PyTorch and Numpy")
-    parser.add_argument('--dir', '-d',type=str, default='./data/', help="directory to save the logging information")
-    parser.add_argument('--name','-n', type=str, default='test', help="name of the experiment, used to save data in a folder named by this parameter")
     parser.add_argument('--save', action='store_true', help="save the trained dynamic model, data buffer, and cost model")
     parser.add_argument('--load',type=str, default=None, help="load the trained dynamic model, data buffer, and cost model from a specified directory")
     parser.add_argument('--ensemble',type=int, default=0, help="number of model ensembles, if this argument is greater than 0, then it will replace the default ensembles number in config.yml") # number of ensembles
