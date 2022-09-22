@@ -64,7 +64,7 @@ class GazeboCarNavEnvSimple(GazeboEnv):
         self.lvel_lim = self.config.lvel_lim  # linear velocity limit
         self.rvel_lim = self.config.rvel_lim  # rotational velocity limit
         self.ego_obs_dim = 6  # 7
-        self.obs_dim = self.ego_obs_dim + 2 + 1
+        self.obs_dim = self.ego_obs_dim + 2 + len(self.layout.cyls_pos)*2 + 1
         self.act_dim = 2
         self.observation_space = spaces.Box(-np.inf, np.inf, (self.obs_dim,), dtype=np.float32)
         self.action_space = spaces.Box(-1, 1, (self.act_dim,), dtype=np.float32)
@@ -87,6 +87,17 @@ class GazeboCarNavEnvSimple(GazeboEnv):
         self.unpause = rospy.ServiceProxy('/gazebo/unpause_physics', Empty)
         self.pause = rospy.ServiceProxy('/gazebo/pause_physics', Empty)
         self.reset_proxy = rospy.ServiceProxy('/gazebo/reset_simulation', Empty)
+
+        if self.config.render:
+            self.fig, self.ax = plt.subplots()
+        #     self.fig, self.ax = plt.subplots()
+        #     self.ax.set_xlim(-self.layout.region_bound, self.layout.region_bound)
+        #     self.ax.set_ylim(-self.layout.region_bound, self.layout.region_bound)
+        #     self.ax.set_xticks(np.linspace(-self.layout.region_bound, self.layout.region_bound, 4))
+        #     self.ax.set_yticks(np.linspace(-self.layout.region_bound, self.layout.region_bound, 4))
+        #     self.ax.set_xlabel('x')
+        #     self.ax.set_ylabel('y')
+        #     plt.grid()
     
     def dist_xy(self):
         dx, dy = self.robot_pos[:2] - self.goal_pos[:2]
@@ -150,9 +161,9 @@ class GazeboCarNavEnvSimple(GazeboEnv):
         return np.concatenate([self.robot_pos, self.robot_vel])
     
     def process_obs(self, reward):
-        # x, y, yaw, xdot, ydot, yawdot, goal_x, goal_y, reward
+        # x, y, yaw, xdot, ydot, yawdot, goal_x, goal_y, (obstacle state), reward
         # in world frame
-        obs = np.concatenate([np.concatenate([self.robot_pos, self.robot_vel]), self.goal_pos, np.array([reward])])
+        obs = np.concatenate([np.concatenate([self.robot_pos, self.robot_vel]), self.goal_pos, self.cyls_pos.reshape(-1), np.array([reward])])
         return obs
     
     def step(self, action):
@@ -256,6 +267,7 @@ class GazeboCarNavEnvSimple(GazeboEnv):
     
     def reset_layout(self):
         self.cyls_num = len(self.layout.cyls_pos)
+        self.cyls_pos = np.array(self.layout.cyls_pos)  # (clys num * 2)
         self.cyls = []
         for i in range(self.cyls_num):
             self.cyls.append("cyl" + str(i))
@@ -309,10 +321,35 @@ class GazeboCarNavEnvSimple(GazeboEnv):
 
         self.goal_pub.publish(goal)
     
-    def render(self):
-        self.fig = plt.figure()
-        # plot obs
-    
+    def render(self, reward):
+        if not self.config.render:
+            pass
+
+        self.ax.clear()
+
+        # plot obstacle
+        for i in range(self.cyls_num):
+            self.ax.add_patch(plt.Circle(self.cyls_pos[i, :], self.layout.collision_region, color='b', alpha=0.8))
+        
+        # plot goal
+        self.ax.scatter(self.goal_pos[0], self.goal_pos[1], color='r', marker='x')
+        
+        # plot robot
+        self.ax.scatter(self.robot_pos[0], self.robot_pos[1], color='g', marker='o')
+
+        self.ax.set_xlim(-self.layout.region_bound, self.layout.region_bound)
+        self.ax.set_ylim(-self.layout.region_bound, self.layout.region_bound)
+        self.ax.set_xticks(np.linspace(-self.layout.region_bound, self.layout.region_bound, 6))
+        self.ax.set_yticks(np.linspace(-self.layout.region_bound, self.layout.region_bound, 6))
+        self.ax.set_xlabel('x')
+        self.ax.set_ylabel('y')
+        self.ax.set_title('reward: {}'.format(reward))
+        
+        plt.grid()
+        plt.show(block=False)
+        plt.pause(0.5)
+
+
     @staticmethod
     def cost_fn(layout, robot_x, robot_y):
         batch_size = robot_x.shape[0]

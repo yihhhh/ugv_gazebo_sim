@@ -13,6 +13,11 @@ import torch.nn as nn
 from torch.utils.data import TensorDataset, DataLoader, random_split
 from .base import MLPRegression, CUDA, CPU, combined_shape, DataBuffer
 
+# import sys
+# sys.path.append('../../../gym_gazebo')
+# import utils
+import wandb
+
 DEFAULT_CONFIG = dict(
                 n_ensembles=7,
                 data_split=0.8,
@@ -219,22 +224,24 @@ class RegressionModelEnsemble:
                         test_losses.append(self.test_model(model, test_loader))
                     test_loss_mean = np.mean(test_losses)
                     test_loss_var = np.var(test_losses)
-                    log_dict = {
-                        "dynamic_model/Epoch": epoch,
-                        "dynamic_model/train_loss_mean": train_loss_mean,
-                        "dynamic_model/train_loss_var": train_loss_var,
-                        "dynamic_model/test_loss_mean": test_loss_mean,
-                        "dynamic_model/test_loss_var": test_loss_var
-                    }
-                    wandb.log(log_dict)
+                    if wandb.run is not None:
+                        log_dict = {
+                            "dynamic_model/Epoch": epoch,
+                            "dynamic_model/train_loss_mean": train_loss_mean,
+                            "dynamic_model/train_loss_var": train_loss_var,
+                            "dynamic_model/test_loss_mean": test_loss_mean,
+                            "dynamic_model/test_loss_var": test_loss_var
+                        }
+                        wandb.run.log(log_dict)
                     print(f"[{epoch}/{self.n_epochs}],loss train m: {train_loss_mean:.4f}, v: {train_loss_var:.4f}, test m: {test_loss_mean:.4f}, v: {test_loss_var:.4f}")
                 else:
-                    log_dict = {
-                        "dynamic_model/Epoch": epoch,
-                        "dynamic_model/train_loss_mean": train_loss_mean,
-                        "dynamic_model/train_loss_var": train_loss_var
-                    }
-                    wandb.log(log_dict)
+                    if wandb.run is not None:
+                        log_dict = {
+                            "dynamic_model/Epoch": epoch,
+                            "dynamic_model/train_loss_mean": train_loss_mean,
+                            "dynamic_model/train_loss_var": train_loss_var
+                        }
+                        wandb.run.log(log_dict)
                     print(f"[{epoch}/{self.n_epochs}],mse train mean: {train_loss_mean:.4f}, var: {train_loss_var:.4f}, no testing data")
                 if test_loss_mean < best_loss:
                     best_loss = test_loss_mean

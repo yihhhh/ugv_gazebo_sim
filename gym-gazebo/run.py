@@ -16,25 +16,22 @@ def run(config, args):
     # setup environment
     env_name = "env_{}".format(args.env_id)
     env_config = config['env_config']
+    if args.render:
+        env_config['render'] = True
     env = gym.make("GazeboCarNav-v0", config=config['env_config'], layout=env_config[env_name])
     env.reset()
 
     # MPC and dynamic model config
     mpc_config = config['mpc_config']
     mpc_config["optimizer"] = args.optimizer.upper()
-    cost_config = config['cost_config']
     dynamic_config = config['dynamic_config']
     if args.load is not None:
         dynamic_config["load"] = True
         dynamic_config["load_folder"] = args.load
-        cost_config["load"] = True
-        cost_config["load_folder"] = args.load
     if args.save:
         save_dir = './checkpoints/{0}/{1}'.format(args.group_id, args.exp_id)
         dynamic_config["save"] = True
         dynamic_config["save_folder"] = save_dir
-        cost_config["save"] = True
-        cost_config["save_folder"] = save_dir
 
     config["arguments"] = vars(args)
     if not args.debug:
@@ -59,6 +56,8 @@ def run(config, args):
         while not done and i<pretrain_max_step:
             action = env.action_space.sample()
             obs_next, reward, done, info = env.step(action)
+            if args.render:
+                    env.render(reward)
             # print(obs_next, "\n", action, "\n\n")
             if not info["goal_met"] and not done:  # otherwise the goal position will change
                 x, y = np.concatenate((obs, action)), obs_next
@@ -84,12 +83,12 @@ def run(config, args):
             obs, ep_ret, ep_cost, done = env.reset(), 0, 0, False
             mpc_controller.reset()
             if args.render:
-                    env.render()
+                    env.render(0.0)
             while not done:    
                 action = np.squeeze(np.array([mpc_controller.act(model=dynamic_model, state=obs)]))
                 obs_next, reward, done, info = env.step(action)
                 if args.render:
-                    env.render()
+                    env.render(reward)
                 ep_ret += reward
                 total_ep_ret += reward
                 ep_cost += info["cost"]
