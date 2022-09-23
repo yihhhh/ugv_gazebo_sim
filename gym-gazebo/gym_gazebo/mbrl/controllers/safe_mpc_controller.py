@@ -71,7 +71,7 @@ class SafeMPC(object):
 
         soln, var = self.optimizer.obtain_solution()
 
-        action = soln[:self.action_dim]
+        action = soln[-self.action_dim:]
         return action
 
     def rce_cost_function(self, actions):

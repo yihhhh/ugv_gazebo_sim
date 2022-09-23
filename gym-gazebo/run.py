@@ -56,8 +56,6 @@ def run(config, args):
         while not done and i<pretrain_max_step:
             action = env.action_space.sample()
             obs_next, reward, done, info = env.step(action)
-            if args.render:
-                    env.render(reward)
             # print(obs_next, "\n", action, "\n\n")
             if not info["goal_met"] and not done:  # otherwise the goal position will change
                 x, y = np.concatenate((obs, action)), obs_next

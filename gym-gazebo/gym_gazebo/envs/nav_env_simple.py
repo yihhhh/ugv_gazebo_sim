@@ -347,7 +347,7 @@ class GazeboCarNavEnvSimple(GazeboEnv):
         
         plt.grid()
         plt.show(block=False)
-        plt.pause(0.5)
+        plt.pause(0.3)
 
 
     @staticmethod
