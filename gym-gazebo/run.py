@@ -56,12 +56,10 @@ def run(config, args):
         while not done and i<pretrain_max_step:
             action = env.action_space.sample()
             obs_next, reward, done, info = env.step(action)
-            # print(obs_next, "\n", action, "\n\n")
-            if not info["goal_met"] and not done:  # otherwise the goal position will change
-                x, y = np.concatenate((obs, action)), obs_next
-                dynamic_model.add_data_point(x, y)
-                data_num += 1
-                i += 1
+            x, y = np.concatenate((obs, action)), obs_next
+            dynamic_model.add_data_point(x, y)
+            data_num += 1
+            i += 1
             obs = obs_next
     print("Finish to collect %i data "%data_num)
 
@@ -92,10 +90,9 @@ def run(config, args):
                 ep_cost += info["cost"]
                 total_ep_cost += info["cost"]
                 total_len += 1
-                if not info["goal_met"] and not done:
-                    x = np.concatenate((obs, action))
-                    y = obs_next #- obs
-                    dynamic_model.add_data_point(x, y)
+                x = np.concatenate((obs, action))
+                y = obs_next #- obs
+                dynamic_model.add_data_point(x, y)
                 obs = obs_next 
             if not args.debug:
                 wandb.log({"EpRet": ep_ret, "EpCost": ep_cost})

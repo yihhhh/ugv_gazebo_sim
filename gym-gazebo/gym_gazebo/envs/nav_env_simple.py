@@ -235,7 +235,7 @@ class GazeboCarNavEnvSimple(GazeboEnv):
         # pause simulation
         self._gazebo_pause()
 
-        done = collision or out_bound or self.t == self.config.max_episode_length
+        done = goal_met or collision or out_bound or self.t == self.config.max_episode_length
         info = {"cost":cost, "goal_met":goal_met}
         # print("obs: {0}\nreward: {1}\ncost: {2}\ngoal_met: {3}\n\n".format(obs, reward, cost, goal_met))
 
