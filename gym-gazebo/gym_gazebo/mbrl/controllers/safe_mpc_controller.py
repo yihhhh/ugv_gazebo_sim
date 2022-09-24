@@ -12,7 +12,7 @@ from ..optimizers import RandomOptimizer, CEMOptimizer, RCEOptimizer
 class SafeMPC(object):
     optimizers = {"CEM": CEMOptimizer, "RANDOM": RandomOptimizer, "RCE": RCEOptimizer}
 
-    def __init__(self, env, mpc_config, layout, cost_fn = None, n_ensembles=0):
+    def __init__(self, env, mpc_config, layout, cost_fn=None, reward_fn=None, n_ensembles=0):
         # mpc_config = config["mpc_config"]
         self.type = mpc_config["optimizer"].upper()
         self.horizon = mpc_config["horizon"]
@@ -45,6 +45,9 @@ class SafeMPC(object):
 
         assert cost_fn is not None, " cost function is not defined! "
         self.cost_fn = cost_fn
+        assert reward_fn is not None, " reward function is not defined! "
+        self.reward_fn = reward_fn
+
         self.layout = layout
 
         self.optimizer.setup(self.rce_cost_function)
@@ -95,7 +98,7 @@ class SafeMPC(object):
             x = np.concatenate((state, action), axis=1)
             state_next = self.model.predict(x) #+ state
 
-            cost_reward = state_next[:, -1]  # compute cost
+            cost_reward = self.reward_fn(self.layout, state, state_next)  # compute cost
             cost_reward = cost_reward.reshape(cost_rewards.shape)
             cost_rewards += cost_reward * self.gamma**t
 

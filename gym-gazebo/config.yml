@@ -18,7 +18,7 @@ env_config:
 
 # MPC controller configuration
 mpc_config:
-    horizon: 8 # how long of the horizon to predict
+    horizon: 6 # how long of the horizon to predict
     gamma: 0.98              # reward discount coefficient
     RCE:
         popsize: 500               # how many random samples for mpc

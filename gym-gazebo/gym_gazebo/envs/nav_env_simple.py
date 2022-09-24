@@ -64,7 +64,7 @@ class GazeboCarNavEnvSimple(GazeboEnv):
         self.lvel_lim = self.config.lvel_lim  # linear velocity limit
         self.rvel_lim = self.config.rvel_lim  # rotational velocity limit
         self.ego_obs_dim = 6  # 7
-        self.obs_dim = self.ego_obs_dim + 2 + len(self.layout.cyls_pos)*2 + 1
+        self.obs_dim = self.ego_obs_dim + 2 + len(self.layout.cyls_pos)*2
         self.act_dim = 2
         self.observation_space = spaces.Box(-np.inf, np.inf, (self.obs_dim,), dtype=np.float32)
         self.action_space = spaces.Box(-1, 1, (self.act_dim,), dtype=np.float32)
@@ -160,10 +160,10 @@ class GazeboCarNavEnvSimple(GazeboEnv):
         # in world frame
         return np.concatenate([self.robot_pos, self.robot_vel])
     
-    def process_obs(self, reward):
-        # x, y, yaw, xdot, ydot, yawdot, goal_x, goal_y, (obstacle state), reward
+    def process_obs(self):
+        # x, y, yaw, xdot, ydot, yawdot, goal_x, goal_y, (obstacle state)
         # in world frame
-        obs = np.concatenate([np.concatenate([self.robot_pos, self.robot_vel]), self.goal_pos, self.cyls_pos.reshape(-1), np.array([reward])])
+        obs = np.concatenate([np.concatenate([self.robot_pos, self.robot_vel]), self.goal_pos, self.cyls_pos.reshape(-1)])
         return obs
     
     def step(self, action):
@@ -217,7 +217,7 @@ class GazeboCarNavEnvSimple(GazeboEnv):
                 reward += 2.0
 
             # get ego obs
-            obs = self.process_obs(reward)
+            obs = self.process_obs()
 
             # unpause
             self._gazebo_unpause()
@@ -305,7 +305,7 @@ class GazeboCarNavEnvSimple(GazeboEnv):
         self.reset_robot_pos()
         self.reset_layout()
 
-        obs = self.process_obs(0.0)
+        obs = self.process_obs()
 
         # pause simulation
         self._gazebo_pause()
@@ -343,11 +343,11 @@ class GazeboCarNavEnvSimple(GazeboEnv):
         self.ax.set_yticks(np.linspace(-self.layout.region_bound, self.layout.region_bound, 6))
         self.ax.set_xlabel('x')
         self.ax.set_ylabel('y')
-        self.ax.set_title('reward: {}'.format(reward))
+        self.ax.set_title('reward: {0}, dist: {1}'.format(np.round(reward, 4), np.round(self.dist_xy(), 4)))
         
         plt.grid()
         plt.show(block=False)
-        plt.pause(0.3)
+        plt.pause(0.0001)
 
 
     @staticmethod
@@ -357,6 +357,10 @@ class GazeboCarNavEnvSimple(GazeboEnv):
         for cyl in layout.cyls_pos:
             dist = np.minimum(dist, np.hypot(np.repeat(cyl[0], batch_size)-robot_x, np.repeat(cyl[1], batch_size)-robot_y))
         return np.where(dist <= np.repeat(layout.cost_region, batch_size), 1.0, 0.0)
+
+    @staticmethod
+    def reward_fn(layout, state, state_next):
+        return 0.0
     
     @property
     def observation_size(self):

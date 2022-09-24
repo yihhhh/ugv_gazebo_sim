@@ -41,27 +41,30 @@ def run(config, args):
     if args.ensemble>0:
         dynamic_config["n_ensembles"] = args.ensemble
     dynamic_model = RegressionModelEnsemble(state_dim+action_dim, state_dim, config=dynamic_config)
-    mpc_controller = SafeMPC(env, mpc_config, layout=env_config[env_name], cost_fn=env.cost_fn, n_ensembles=dynamic_config["n_ensembles"])
+    mpc_controller = SafeMPC(env, mpc_config, layout=env_config[env_name], cost_fn=env.cost_fn, reward_fn=env.reward_fn, n_ensembles=dynamic_config["n_ensembles"])
 
     # Prepare random collected dataset
     start_time = time.time()
-    pretrain_episodes = 20 if args.load is None else 10
-    pretrain_max_step = 50
-    print("collecting random episodes...")
-    data_num = 0
-    for epi in tqdm(range(pretrain_episodes)):
-        obs = env.reset()
-        done = False
-        i = 0
-        while not done and i<pretrain_max_step:
-            action = env.action_space.sample()
-            obs_next, reward, done, info = env.step(action)
-            x, y = np.concatenate((obs, action)), obs_next
-            dynamic_model.add_data_point(x, y)
-            data_num += 1
-            i += 1
-            obs = obs_next
-    print("Finish to collect %i data "%data_num)
+    if not args.test:
+        pretrain_episodes = 50 if args.load is None else 10
+        pretrain_max_step = 50
+        print("collecting random episodes...")
+        data_num = 0
+        for epi in tqdm(range(pretrain_episodes)):
+            obs = env.reset()
+            done = False
+            i = 0
+            while not done and i<pretrain_max_step:
+                action = env.action_space.sample()
+                obs_next, reward, done, info = env.step(action)
+                if args.render:
+                    env.render(reward)
+                x, y = np.concatenate((obs, action)), obs_next
+                dynamic_model.add_data_point(x, y)
+                data_num += 1
+                i += 1
+                obs = obs_next
+        print("Finish to collect %i data "%data_num)
 
     # training the model
     if args.load is None:
@@ -90,9 +93,10 @@ def run(config, args):
                 ep_cost += info["cost"]
                 total_ep_cost += info["cost"]
                 total_len += 1
-                x = np.concatenate((obs, action))
-                y = obs_next #- obs
-                dynamic_model.add_data_point(x, y)
+                if not args.test:
+                    x = np.concatenate((obs, action))
+                    y = obs_next #- obs
+                    dynamic_model.add_data_point(x, y)
                 obs = obs_next 
             if not args.debug:
                 wandb.log({"EpRet": ep_ret, "EpCost": ep_cost})
