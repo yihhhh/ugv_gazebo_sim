@@ -41,7 +41,7 @@ def run(config, args):
     if args.ensemble>0:
         dynamic_config["n_ensembles"] = args.ensemble
     dynamic_model = RegressionModelEnsemble(state_dim+action_dim, state_dim, config=dynamic_config)
-    mpc_controller = SafeMPC(env, mpc_config, layout=env_config[env_name], cost_fn=env.cost_fn, reward_fn=env.reward_fn, n_ensembles=dynamic_config["n_ensembles"])
+    mpc_controller = SafeMPC(env, mpc_config, cost_fn=env.cost_fn, reward_fn=env.reward_fn, n_ensembles=dynamic_config["n_ensembles"])
 
     # Prepare random collected dataset
     start_time = time.time()

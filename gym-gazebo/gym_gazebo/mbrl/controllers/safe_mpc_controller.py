@@ -12,7 +12,7 @@ from ..optimizers import RandomOptimizer, CEMOptimizer, RCEOptimizer
 class SafeMPC(object):
     optimizers = {"CEM": CEMOptimizer, "RANDOM": RandomOptimizer, "RCE": RCEOptimizer}
 
-    def __init__(self, env, mpc_config, layout, cost_fn=None, reward_fn=None, n_ensembles=0):
+    def __init__(self, env, mpc_config, cost_fn=None, reward_fn=None, n_ensembles=0):
         # mpc_config = config["mpc_config"]
         self.type = mpc_config["optimizer"].upper()
         self.horizon = mpc_config["horizon"]
@@ -47,8 +47,6 @@ class SafeMPC(object):
         self.cost_fn = cost_fn
         assert reward_fn is not None, " reward function is not defined! "
         self.reward_fn = reward_fn
-
-        self.layout = layout
 
         self.optimizer.setup(self.rce_cost_function)
 
@@ -98,11 +96,11 @@ class SafeMPC(object):
             x = np.concatenate((state, action), axis=1)
             state_next = self.model.predict(x) #+ state
 
-            cost_reward = self.reward_fn(self.layout, state, state_next)  # compute cost
+            cost_reward = self.reward_fn(state[:, :2], state_next[:, :2])  # compute cost
             cost_reward = cost_reward.reshape(cost_rewards.shape)
             cost_rewards += cost_reward * self.gamma**t
 
-            cost_const = self.cost_fn(self.layout, state_next[:, 0], state_next[:, 1])  # compute cost
+            cost_const = self.cost_fn(state_next[:, :2])  # compute cost
             cost_const = cost_const.reshape(cost_constraints.shape)
             cost_constraints += cost_const * self.beta**t
             state = state_next

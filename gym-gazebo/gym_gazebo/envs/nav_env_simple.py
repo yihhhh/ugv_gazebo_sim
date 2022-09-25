@@ -350,17 +350,21 @@ class GazeboCarNavEnvSimple(GazeboEnv):
         plt.pause(0.0001)
 
 
-    @staticmethod
-    def cost_fn(layout, robot_x, robot_y):
+    def cost_fn(robot_pos):
         batch_size = robot_x.shape[0]
         dist = np.repeat(np.inf, batch_size)
-        for cyl in layout.cyls_pos:
-            dist = np.minimum(dist, np.hypot(np.repeat(cyl[0], batch_size)-robot_x, np.repeat(cyl[1], batch_size)-robot_y))
-        return np.where(dist <= np.repeat(layout.cost_region, batch_size), 1.0, 0.0)
+        for cyl in self.layout.cyls_pos:
+            dist = np.minimum(dist, np.hypot(np.repeat(cyl[0], batch_size)-robot_pos[:, 0], np.repeat(cyl[1], batch_size)-robot_pos[:,1]))
+        return np.where(dist <= np.repeat(self.layout.cost_region, batch_size), 1.0, 0.0)
 
-    @staticmethod
-    def reward_fn(layout, state, state_next):
-        return 0.0
+    def reward_fn(robot_pos, robot_pos_next):
+        batch_size = robot_pos.shape[0]
+        goal_x = np.repeat(self.goal_pos[0], batch_size)
+        goal_y = np.repeat(self.goal_pos[1], batch_size)
+        dist = np.hypot(goal_x-robot_pos[:, 0], goal_y-robot_pos[:, 1])
+        next_dist = np.hypot(goal_x-robot_pos_next[:, 0], goal_y-robot_pos_next[:, 1])
+        reward = (dist - next_dist) * self.reward_distance
+        return reward
     
     @property
     def observation_size(self):
