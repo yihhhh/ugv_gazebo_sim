@@ -64,7 +64,7 @@ class GazeboCarNavEnvSimple(GazeboEnv):
         self.lvel_lim = self.config.lvel_lim  # linear velocity limit
         self.rvel_lim = self.config.rvel_lim  # rotational velocity limit
         self.ego_obs_dim = 6  # 7
-        self.obs_dim = self.ego_obs_dim + 2 + len(self.layout.cyls_pos)*2
+        self.obs_dim = self.ego_obs_dim + 2 + 2 + len(self.layout.cyls_pos)*2
         self.act_dim = 2
         self.observation_space = spaces.Box(-np.inf, np.inf, (self.obs_dim,), dtype=np.float32)
         self.action_space = spaces.Box(-1, 1, (self.act_dim,), dtype=np.float32)
@@ -161,9 +161,10 @@ class GazeboCarNavEnvSimple(GazeboEnv):
         return np.concatenate([self.robot_pos, self.robot_vel])
     
     def process_obs(self):
-        # x, y, yaw, xdot, ydot, yawdot, goal_x, goal_y, (obstacle state)
+        # x, y, yaw, xdot, ydot, yawdot, cos(yaw), sin(yaw), goal_x, goal_y, (obstacle state)
         # in world frame
-        obs = np.concatenate([np.concatenate([self.robot_pos, self.robot_vel]), self.goal_pos, self.cyls_pos.reshape(-1)])
+        yaw = self.robot_pos[2]
+        obs = np.concatenate([np.concatenate([self.robot_pos, self.robot_vel, [np.cos(yaw), np.sin(yaw)]]), self.goal_pos, self.cyls_pos.reshape(-1)])
         return obs
     
     def step(self, action):
@@ -350,14 +351,14 @@ class GazeboCarNavEnvSimple(GazeboEnv):
         plt.pause(0.0001)
 
 
-    def cost_fn(robot_pos):
-        batch_size = robot_x.shape[0]
+    def cost_fn(self, robot_pos):
+        batch_size = robot_pos.shape[0]
         dist = np.repeat(np.inf, batch_size)
         for cyl in self.layout.cyls_pos:
             dist = np.minimum(dist, np.hypot(np.repeat(cyl[0], batch_size)-robot_pos[:, 0], np.repeat(cyl[1], batch_size)-robot_pos[:,1]))
         return np.where(dist <= np.repeat(self.layout.cost_region, batch_size), 1.0, 0.0)
 
-    def reward_fn(robot_pos, robot_pos_next):
+    def reward_fn(self, robot_pos, robot_pos_next):
         batch_size = robot_pos.shape[0]
         goal_x = np.repeat(self.goal_pos[0], batch_size)
         goal_y = np.repeat(self.goal_pos[1], batch_size)
