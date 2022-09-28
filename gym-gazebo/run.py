@@ -51,7 +51,7 @@ def run(config, args):
         print("collecting random episodes...")
         data_num = 0
         for epi in tqdm(range(pretrain_episodes)):
-            obs = env.reset()
+            obs = env.reset(random=True)
             done = False
             i = 0
             while not done and i<pretrain_max_step:

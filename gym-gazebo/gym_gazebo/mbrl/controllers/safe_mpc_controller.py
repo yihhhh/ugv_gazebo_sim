@@ -96,7 +96,7 @@ class SafeMPC(object):
             x = np.concatenate((state, action), axis=1)
             state_next = self.model.predict(x) #+ state
 
-            cost_reward = self.reward_fn(state[:, :2], state_next[:, :2])  # compute cost
+            cost_reward = self.reward_fn(state[:, :3], state_next[:, :3])  # compute cost
             cost_reward = cost_reward.reshape(cost_rewards.shape)
             cost_rewards += cost_reward * self.gamma**t
 

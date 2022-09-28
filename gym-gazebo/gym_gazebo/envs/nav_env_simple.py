@@ -52,11 +52,14 @@ class GazeboCarNavEnvSimple(GazeboEnv):
         self.region_bound = self.layout.region_bound
         self.config = config
         self.reward_distance = self.config.reward_distance
+        self.reward_angle = self.config.reward_angle
+        self.reward_goal_met = self.config.reward_goal_met
 
         self.robot_pos = np.zeros((3, ))
         self.robot_vel = np.zeros((3, ))
         self.goal_pos = np.zeros((2, ))
         self.last_dist_goal = 0
+        self.last_angle_goal = 0
         self.goal_region = self.layout.goal_region
         self.collision_region = self.layout.collision_region
         self.cost_region = self.layout.cost_region
@@ -64,12 +67,13 @@ class GazeboCarNavEnvSimple(GazeboEnv):
         self.lvel_lim = self.config.lvel_lim  # linear velocity limit
         self.rvel_lim = self.config.rvel_lim  # rotational velocity limit
         self.ego_obs_dim = 6  # 7
-        self.obs_dim = self.ego_obs_dim + 2 + 2 + len(self.layout.cyls_pos)*2
+        self.obs_dim = self.ego_obs_dim + 2
         self.act_dim = 2
         self.observation_space = spaces.Box(-np.inf, np.inf, (self.obs_dim,), dtype=np.float32)
         self.action_space = spaces.Box(-1, 1, (self.act_dim,), dtype=np.float32)
         self.key_to_slice = {}
         self.key_to_slice["goal"] = slice(0, 2)
+        self.seed()
 
         # ROS
         self.cmd_topic = "/cmd_vel"
@@ -90,23 +94,26 @@ class GazeboCarNavEnvSimple(GazeboEnv):
 
         if self.config.render:
             self.fig, self.ax = plt.subplots()
-        #     self.fig, self.ax = plt.subplots()
-        #     self.ax.set_xlim(-self.layout.region_bound, self.layout.region_bound)
-        #     self.ax.set_ylim(-self.layout.region_bound, self.layout.region_bound)
-        #     self.ax.set_xticks(np.linspace(-self.layout.region_bound, self.layout.region_bound, 4))
-        #     self.ax.set_yticks(np.linspace(-self.layout.region_bound, self.layout.region_bound, 4))
-        #     self.ax.set_xlabel('x')
-        #     self.ax.set_ylabel('y')
-        #     plt.grid()
     
+    def seed(self):
+        ''' Set internal random state seeds '''
+        self._seed = np.random.randint(2**32)
+
     def dist_xy(self):
         dx, dy = self.robot_pos[:2] - self.goal_pos[:2]
         return np.hypot(dx, dy)
+
+    def dist_yaw(self):
+        dx, dy = self.robot_pos[:2] - self.goal_pos[:2]
+        angle_to_goal = np.arctan2(dy, dx)
+        return abs(angle_to_goal - self.robot_pos[3])
     
     def reward(self):
         dist_goal = self.dist_xy()
-        reward = (self.last_dist_goal - dist_goal) * self.reward_distance
+        angle_goal = self.dist_yaw()
+        reward = (self.last_dist_goal - dist_goal) * self.reward_distance + (self.last_angle_goal - angle_goal) * self.reward_angle
         self.last_dist_goal = dist_goal
+        self.last_angle_goal = angle_goal
         return reward
     
     def cost(self):
@@ -164,7 +171,8 @@ class GazeboCarNavEnvSimple(GazeboEnv):
         # x, y, yaw, xdot, ydot, yawdot, cos(yaw), sin(yaw), goal_x, goal_y, (obstacle state)
         # in world frame
         yaw = self.robot_pos[2]
-        obs = np.concatenate([np.concatenate([self.robot_pos, self.robot_vel, [np.cos(yaw), np.sin(yaw)]]), self.goal_pos, self.cyls_pos.reshape(-1)])
+        # obs = np.concatenate([np.concatenate([self.robot_pos, self.robot_vel, [np.cos(yaw), np.sin(yaw)]]), self.goal_pos, self.cyls_pos.reshape(-1)])
+        obs = np.concatenate([self.robot_pos, self.robot_vel, [np.cos(yaw), np.sin(yaw)]])
         return obs
     
     def step(self, action):
@@ -215,7 +223,7 @@ class GazeboCarNavEnvSimple(GazeboEnv):
             # goal reach check
             goal_met = self.goal_met()
             if goal_met:
-                reward += 2.0
+                reward += self.reward_goal_met
 
             # get ego obs
             obs = self.process_obs()
@@ -242,8 +250,29 @@ class GazeboCarNavEnvSimple(GazeboEnv):
 
         return obs, reward, done, info
     
-    def reset_robot_pos(self):
-        self.robot_pos = np.array(self.layout.robot_pos)
+    def sample_robot_pos(self):
+        success = False
+        while not success:
+            x_sample = self.rs.uniform(-self.region_bound, self.region_bound)
+            y_sample = self.rs.uniform(-self.region_bound, self.region_bound)
+            for i in range(self.cyls_num):
+                x, y = self.placements[self.cyls[i]]
+                dist = np.hypot(x-x_sample, y-y_sample)
+                if dist < self.collision_region:
+                    if i == self.cyls_num - 1:
+                        i = 0
+                    break
+            if i == self.cyls_num - 1:
+                success = True
+
+        yaw_sample = self.rs.uniform(-np.pi, np.pi, 1)
+        return np.array([x_sample, y_sample, yaw_sample])
+
+    def reset_robot_pos(self, random=False):
+        if random:
+            self.robot_pos = sample_robot_pos()
+        else:
+            self.robot_pos = np.array(self.layout.robot_pos)
         self.robot_vel = np.zeros((3, ))
         state = ModelState()
         state.model_name = self.robot_name
@@ -280,6 +309,7 @@ class GazeboCarNavEnvSimple(GazeboEnv):
         self.placements["goal"] = self.layout.goal_pos
         self.goal_pos = np.array(self.layout.goal_pos)
         self.last_dist_goal = self.dist_xy()
+        self.last_angle_goal = self.dist_yaw()
         
         # set cyls states by SetModelStates
         rospy.wait_for_service('/gazebo/set_model_state')
@@ -295,7 +325,11 @@ class GazeboCarNavEnvSimple(GazeboEnv):
         except rospy.ServiceException as e:
             print("/gazebo/set_model_state call failed: {}".format(e))
     
-    def reset(self):
+    def reset(self, random=False):
+        # Increment seed
+        self._seed += 1
+        self.rs = np.random.RandomState(self._seed)
+
         # Reset internal timer
         self.t = 0
 
@@ -303,7 +337,7 @@ class GazeboCarNavEnvSimple(GazeboEnv):
         self._gazebo_unpause()
 
         # sample goal_pos and obstacles' pos
-        self.reset_robot_pos()
+        self.reset_robot_pos(random)
         self.reset_layout()
 
         obs = self.process_obs()
@@ -362,9 +396,17 @@ class GazeboCarNavEnvSimple(GazeboEnv):
         batch_size = robot_pos.shape[0]
         goal_x = np.repeat(self.goal_pos[0], batch_size)
         goal_y = np.repeat(self.goal_pos[1], batch_size)
-        dist = np.hypot(goal_x-robot_pos[:, 0], goal_y-robot_pos[:, 1])
-        next_dist = np.hypot(goal_x-robot_pos_next[:, 0], goal_y-robot_pos_next[:, 1])
-        reward = (dist - next_dist) * self.reward_distance
+
+        dx, dy = goal_x-robot_pos[:, 0], goal_y-robot_pos[:, 1]
+        dist = np.hypot(dx, dy)
+        angle = abs(np.arctan2(dy, dx) - robot_pos[:, 3])
+
+        next_dx, next_dy = goal_x-robot_pos_next[:, 0], goal_y-robot_pos_next[:, 1]
+        next_dist = np.hypot(next_dx, next_dy)
+        next_angle = abs(np.arctan2(next_dy, next_dx) - robot_pos[:, 3])
+
+        reward = (dist - next_dist) * self.reward_distance + (angle - next_angle) * self.reward_angle
+        reward += np.where(next_dist<=self.goal_region, self.reward_goal_met, 0)
         return reward
     
     @property

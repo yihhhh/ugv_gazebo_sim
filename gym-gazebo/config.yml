@@ -2,6 +2,8 @@ env_config:
     action_repeat: 1
     max_episode_length: 100
     reward_distance: 1.0  # reward scale
+    reward_angle: 0.5
+    reward_goal_met: 2.5
     lvel_lim: 0.3  # linear velocity limit
     rvel_lim: 1.0  # rotational velocity limit
 
