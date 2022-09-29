@@ -106,7 +106,7 @@ class GazeboCarNavEnvSimple(GazeboEnv):
     def dist_yaw(self):
         dx, dy = self.robot_pos[:2] - self.goal_pos[:2]
         angle_to_goal = np.arctan2(dy, dx)
-        return abs(angle_to_goal - self.robot_pos[3])
+        return abs(angle_to_goal - self.robot_pos[2])
     
     def reward(self):
         dist_goal = self.dist_xy()
@@ -172,7 +172,7 @@ class GazeboCarNavEnvSimple(GazeboEnv):
         # in world frame
         yaw = self.robot_pos[2]
         # obs = np.concatenate([np.concatenate([self.robot_pos, self.robot_vel, [np.cos(yaw), np.sin(yaw)]]), self.goal_pos, self.cyls_pos.reshape(-1)])
-        obs = np.concatenate([self.robot_pos, self.robot_vel, [np.cos(yaw), np.sin(yaw)]])
+        obs = np.concatenate([self.robot_pos, self.robot_vel, np.array([np.cos(yaw), np.sin(yaw)]).reshape(-1)])
         return obs
     
     def step(self, action):
@@ -270,7 +270,7 @@ class GazeboCarNavEnvSimple(GazeboEnv):
 
     def reset_robot_pos(self, random=False):
         if random:
-            self.robot_pos = sample_robot_pos()
+            self.robot_pos = self.sample_robot_pos()
         else:
             self.robot_pos = np.array(self.layout.robot_pos)
         self.robot_vel = np.zeros((3, ))
@@ -399,11 +399,11 @@ class GazeboCarNavEnvSimple(GazeboEnv):
 
         dx, dy = goal_x-robot_pos[:, 0], goal_y-robot_pos[:, 1]
         dist = np.hypot(dx, dy)
-        angle = abs(np.arctan2(dy, dx) - robot_pos[:, 3])
+        angle = abs(np.arctan2(dy, dx) - robot_pos[:, 2])
 
         next_dx, next_dy = goal_x-robot_pos_next[:, 0], goal_y-robot_pos_next[:, 1]
         next_dist = np.hypot(next_dx, next_dy)
-        next_angle = abs(np.arctan2(next_dy, next_dx) - robot_pos[:, 3])
+        next_angle = abs(np.arctan2(next_dy, next_dx) - robot_pos[:, 2])
 
         reward = (dist - next_dist) * self.reward_distance + (angle - next_angle) * self.reward_angle
         reward += np.where(next_dist<=self.goal_region, self.reward_goal_met, 0)

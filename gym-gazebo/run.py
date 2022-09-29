@@ -46,7 +46,7 @@ def run(config, args):
     # Prepare random collected dataset
     start_time = time.time()
     if not args.test:
-        pretrain_episodes = 50 if args.load is None else 10
+        pretrain_episodes = 50 if args.load is None and not args.debug else 10
         pretrain_max_step = 50
         print("collecting random episodes...")
         data_num = 0
