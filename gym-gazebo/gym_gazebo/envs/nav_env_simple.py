@@ -54,6 +54,8 @@ class GazeboCarNavEnvSimple(GazeboEnv):
         self.reward_distance = self.config.reward_distance
         self.reward_angle = self.config.reward_angle
         self.reward_goal_met = self.config.reward_goal_met
+        self.stack_obs = self.config.stack_obs
+        self.action_repeat = self.config.action_repeat
 
         self.robot_pos = np.zeros((3, ))
         self.robot_vel = np.zeros((3, ))
@@ -66,8 +68,8 @@ class GazeboCarNavEnvSimple(GazeboEnv):
 
         self.lvel_lim = self.config.lvel_lim  # linear velocity limit
         self.rvel_lim = self.config.rvel_lim  # rotational velocity limit
-        self.ego_obs_dim = 6  # 7
-        self.obs_dim = self.ego_obs_dim + 2
+        self.ego_obs_dim = 8
+        self.obs_dim = self.ego_obs_dim if not self.stack_obs else self.ego_obs_dim * self.action_repeat
         self.act_dim = 2
         self.observation_space = spaces.Box(-np.inf, np.inf, (self.obs_dim,), dtype=np.float32)
         self.action_space = spaces.Box(-1, 1, (self.act_dim,), dtype=np.float32)
@@ -104,7 +106,7 @@ class GazeboCarNavEnvSimple(GazeboEnv):
         return np.hypot(dx, dy)
 
     def dist_yaw(self):
-        dx, dy = self.robot_pos[:2] - self.goal_pos[:2]
+        dx, dy = self.goal_pos[:2] - self.robot_pos[:2]
         angle_to_goal = np.arctan2(dy, dx)
         return abs(angle_to_goal - self.robot_pos[2])
     
@@ -112,6 +114,7 @@ class GazeboCarNavEnvSimple(GazeboEnv):
         dist_goal = self.dist_xy()
         angle_goal = self.dist_yaw()
         reward = (self.last_dist_goal - dist_goal) * self.reward_distance + (self.last_angle_goal - angle_goal) * self.reward_angle
+        # print("dist: {0}, angle: {1}, reward: {2}".format(self.last_dist_goal - dist_goal, self.last_angle_goal - angle_goal, reward))
         self.last_dist_goal = dist_goal
         self.last_angle_goal = angle_goal
         return reward
@@ -180,9 +183,12 @@ class GazeboCarNavEnvSimple(GazeboEnv):
         # Unpause simulation to make observation
         self._gazebo_unpause()
 
+        if self.stack_obs:
+            cat_obs = np.zeros(self.obs_dim)
+
         reward = 0
         cost = 0
-        for k in range(self.config.action_repeat):
+        for k in range(self.action_repeat):
             vel_cmd = Twist()
             vel_cmd.linear.x = self.lvel_lim*action[0]
             vel_cmd.angular.z = self.rvel_lim*action[1]
@@ -228,6 +234,9 @@ class GazeboCarNavEnvSimple(GazeboEnv):
             # get ego obs
             obs = self.process_obs()
 
+            if self.stack_obs:
+                cat_obs[k*self.ego_obs_dim :(k+1)*self.ego_obs_dim] = obs
+
             # unpause
             self._gazebo_unpause()
 
@@ -237,6 +246,9 @@ class GazeboCarNavEnvSimple(GazeboEnv):
                self.t == self.config.max_episode_length or \
                collision or \
                out_bound:
+                if k != self.action_repeat-1 and self.stack_obs:
+                    for j in range(k+1, self.action_repeat):
+                        cat_obs[j*self.ego_obs_dim :(j+1)*self.ego_obs_dim] = obs 
                 break
 
         cost = 1 if cost > 0 else 0
@@ -248,7 +260,10 @@ class GazeboCarNavEnvSimple(GazeboEnv):
         info = {"cost":cost, "goal_met":goal_met}
         # print("obs: {0}\nreward: {1}\ncost: {2}\ngoal_met: {3}\n\n".format(obs, reward, cost, goal_met))
 
-        return obs, reward, done, info
+        if self.stack_obs:
+            return cat_obs, reward, done, info
+        else:
+            return obs, reward, done, info
     
     def sample_robot_pos(self):
         success = False
@@ -342,10 +357,17 @@ class GazeboCarNavEnvSimple(GazeboEnv):
 
         obs = self.process_obs()
 
+        if self.stack_obs:
+            for k in range(self.action_repeat):
+                cat_obs = obs if k == 0 else np.concatenate((cat_obs, obs))
+
         # pause simulation
         self._gazebo_pause()
 
-        return obs
+        if self.stack_obs:
+            return cat_obs
+        else:
+            return obs
     
     def publish_goal_pos(self):
         goal = PoseStamped()
@@ -371,6 +393,9 @@ class GazeboCarNavEnvSimple(GazeboEnv):
         
         # plot robot
         self.ax.scatter(self.robot_pos[0], self.robot_pos[1], color='g', marker='o')
+        d = 1 if self.robot_pos[2] == 0.0 else self.robot_pos[2] // np.abs(self.robot_pos[2])
+        self.ax.arrow(self.robot_pos[0], self.robot_pos[1], d, d*np.tan(self.robot_pos[2]), head_width=0.05, head_length=0.08, color='g')
+        self.ax.arrow(self.robot_pos[0], self.robot_pos[1], self.goal_pos[0] - self.robot_pos[0], self.goal_pos[1] - self.robot_pos[1], head_width=0.05, head_length=0.08, color='r')
 
         self.ax.set_xlim(-self.layout.region_bound, self.layout.region_bound)
         self.ax.set_ylim(-self.layout.region_bound, self.layout.region_bound)
@@ -378,36 +403,63 @@ class GazeboCarNavEnvSimple(GazeboEnv):
         self.ax.set_yticks(np.linspace(-self.layout.region_bound, self.layout.region_bound, 6))
         self.ax.set_xlabel('x')
         self.ax.set_ylabel('y')
-        self.ax.set_title('reward: {0}, dist: {1}'.format(np.round(reward, 4), np.round(self.dist_xy(), 4)))
+        self.ax.set_title('reward: {0}, dist: {1}, angle: {2}'.format(np.round(reward, 4), np.round(self.dist_xy(), 4), np.round(self.dist_yaw(), 4)))
         
         plt.grid()
         plt.show(block=False)
         plt.pause(0.0001)
 
 
-    def cost_fn(self, robot_pos):
-        batch_size = robot_pos.shape[0]
+    def cost_fn(self, robot_state):
+        batch_size = robot_state.shape[0]
         dist = np.repeat(np.inf, batch_size)
-        for cyl in self.layout.cyls_pos:
-            dist = np.minimum(dist, np.hypot(np.repeat(cyl[0], batch_size)-robot_pos[:, 0], np.repeat(cyl[1], batch_size)-robot_pos[:,1]))
+        if not self.stack_obs:
+            robot_x, robot_y = robot_pos[:, 0], robot_pos[:,1]
+            for cyl in self.layout.cyls_pos:
+                dist = np.minimum(dist, np.hypot(np.repeat(cyl[0], batch_size)-robot_x, np.repeat(cyl[1], batch_size)-robot_y))
+        else:
+            for k in range(self.action_repeat):
+                for cyl in self.layout.cyls_pos:
+                    dist = np.minimum(dist, np.hypot(np.repeat(cyl[0], batch_size)-robot_x, np.repeat(cyl[1], batch_size)-robot_y))
         return np.where(dist <= np.repeat(self.layout.cost_region, batch_size), 1.0, 0.0)
 
-    def reward_fn(self, robot_pos, robot_pos_next):
-        batch_size = robot_pos.shape[0]
+    def reward_fn(self, robot_state, robot_state_next):
+        batch_size = robot_state.shape[0]
         goal_x = np.repeat(self.goal_pos[0], batch_size)
         goal_y = np.repeat(self.goal_pos[1], batch_size)
 
-        dx, dy = goal_x-robot_pos[:, 0], goal_y-robot_pos[:, 1]
-        dist = np.hypot(dx, dy)
-        angle = abs(np.arctan2(dy, dx) - robot_pos[:, 2])
+        if not self.stack_obs:
+            robot_x, robot_y, robot_yaw = robot_state[:, 0], robot_state[:, 1], robot_state[:, 2]
+            robot_x_next, robot_y_next, robot_yaw_next = robot_state_next[:, 0], robot_state_next[:, 1], robot_state_next[:, 2]
 
-        next_dx, next_dy = goal_x-robot_pos_next[:, 0], goal_y-robot_pos_next[:, 1]
-        next_dist = np.hypot(next_dx, next_dy)
-        next_angle = abs(np.arctan2(next_dy, next_dx) - robot_pos[:, 2])
+            dx, dy = goal_x-robot_x, goal_y-robot_y
+            dist = np.hypot(dx, dy)
+            angle = abs(np.arctan2(dy, dx) - robot_yaw)
 
-        reward = (dist - next_dist) * self.reward_distance + (angle - next_angle) * self.reward_angle
-        reward += np.where(next_dist<=self.goal_region, self.reward_goal_met, 0)
-        return reward
+            next_dx, next_dy = goal_x-robot_x_next, goal_y-robot_y_next
+            next_dist = np.hypot(next_dx, next_dy)
+            next_angle = abs(np.arctan2(next_dy, next_dx) - robot_yaw_next)
+
+            reward = (dist - next_dist) * self.reward_distance + (angle - next_angle) * self.reward_angle
+            reward += np.where(next_dist<=self.goal_region, self.reward_goal_met, 0)
+            return reward
+        else:
+            reward = 0.0
+            for k in range(self.action_repeat):
+                robot_x, robot_y, robot_yaw = robot_state[:, k*self.ego_obs_dim], robot_state[:, k*self.ego_obs_dim+1], robot_state[:, k*self.ego_obs_dim+2]
+                robot_x_next, robot_y_next, robot_yaw_next = robot_state_next[:, k*self.ego_obs_dim], robot_state_next[:, k*self.ego_obs_dim+1], robot_state_next[:, k*self.ego_obs_dim+2]
+
+                dx, dy = goal_x-robot_x, goal_y-robot_y
+                dist = np.hypot(dx, dy)
+                angle = abs(np.arctan2(dy, dx) - robot_yaw)
+
+                next_dx, next_dy = goal_x-robot_x_next, goal_y-robot_y_next
+                next_dist = np.hypot(next_dx, next_dy)
+                next_angle = abs(np.arctan2(next_dy, next_dx) - robot_yaw_next)
+
+                reward += (dist - next_dist) * self.reward_distance + (angle - next_angle) * self.reward_angle
+                reward += np.where(next_dist<=self.goal_region, self.reward_goal_met, 0)
+            return reward
     
     @property
     def observation_size(self):
