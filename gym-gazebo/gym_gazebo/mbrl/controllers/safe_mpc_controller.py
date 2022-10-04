@@ -96,11 +96,11 @@ class SafeMPC(object):
             x = np.concatenate((state, action), axis=1)
             state_next = self.model.predict(x) #+ state
 
-            cost_reward = self.reward_fn(state[:, :3], state_next[:, :3])  # compute cost
+            cost_reward = self.reward_fn(state, state_next)  # compute cost
             cost_reward = cost_reward.reshape(cost_rewards.shape)
             cost_rewards += cost_reward * self.gamma**t
 
-            cost_const = self.cost_fn(state_next[:, :2])  # compute cost
+            cost_const = self.cost_fn(state_next)  # compute cost
             cost_const = cost_const.reshape(cost_constraints.shape)
             cost_constraints += cost_const * self.beta**t
             state = state_next
