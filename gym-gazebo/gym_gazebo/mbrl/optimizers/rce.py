@@ -132,9 +132,12 @@ class RCEOptimizer(Optimizer):
             feasible_samples = samples[feasible_idx] # [num, sol_dim]
             feasible_num = feasible_samples.shape[0]
             if feasible_num<self.minimal_elites:
+                idx = np.argsort(cost_constraints)
                 n = self.minimal_elites - feasible_num
-                idx = np.random.randint(0, samples.shape[0], n)
-                sub_elites = samples[idx]
+                sub_elites = samples[idx][:n]
+                # n = self.minimal_elites - feasible_num
+                # idx = np.random.randint(0, samples.shape[0], n)
+                # sub_elites = samples[idx]
                 elites = np.concatenate((sub_elites, feasible_samples), axis=0)
             else:
                 idx = np.argsort(feasible_samples_reward)
