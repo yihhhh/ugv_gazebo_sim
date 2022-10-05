@@ -16,7 +16,7 @@ env_config:
         cost_region: 0.6
         goal_region: 0.3
         robot_pos: [-0.5, -1.5, 0]
-        goal_pos: [1.5, -1.5]
+        goal_pos: [1.5, 0.5]
         cyls_pos: [[-1.5, -0.5], [-0.5, -0.5], [0.5, -0.5]]
 
 # MPC controller configuration
@@ -26,8 +26,8 @@ mpc_config:
     RCE:
         popsize: 500               # how many random samples for mpc
         max_iters: 8
-        num_elites: 12
-        minimal_elites: 5                 # threshold for minimal elites
+        num_elites: 6
+        minimal_elites: 3                 # threshold for minimal elites
         epsilon: 0.01 # for 0.003, it will has +- 0.05 error rate with 0.05 prob when converges
         alpha: 0.1 # weights for previous mean and var
         init_mean: 0

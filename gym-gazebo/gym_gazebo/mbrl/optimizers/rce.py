@@ -116,11 +116,6 @@ class RCEOptimizer(Optimizer):
 
         size = [self.popsize, self.sol_dim]
 
-        if debug:
-            cost_list = []
-            mean_list = []
-            var_list = []
-
         while (t < self.max_iters) and np.max(var) > self.epsilon:
 
             #lb_dist, ub_dist = mean - self.lb, self.ub - mean
@@ -137,9 +132,9 @@ class RCEOptimizer(Optimizer):
             feasible_samples = samples[feasible_idx] # [num, sol_dim]
             feasible_num = feasible_samples.shape[0]
             if feasible_num<self.minimal_elites:
-                idx = np.argsort(cost_constraints)
                 n = self.minimal_elites - feasible_num
-                sub_elites = samples[idx][:n]
+                idx = np.random.randint(0, samples.shape[0], n)
+                sub_elites = samples[idx]
                 elites = np.concatenate((sub_elites, feasible_samples), axis=0)
             else:
                 idx = np.argsort(feasible_samples_reward)
@@ -152,21 +147,10 @@ class RCEOptimizer(Optimizer):
             var = self.alpha * var + (1 - self.alpha) * new_var
 
             if debug:
-                min_cost = costs[idx][:self.num_elites]
-                cost_list.append(np.mean(min_cost))
                 mean_list.append(np.mean(new_mean[0]))
                 var_list.append(np.mean(new_var))
 
             t += 1
             sol, solvar = mean, var
 
-        if debug:
-            fig, axs = plt.subplots(3, sharex=True)
-            axs[0].plot(cost_list)
-            axs[1].plot(mean_list)
-            axs[2].plot(var_list)
-            name = time.time()
-            name = str(name)
-            plt.savefig("./data/debug/"+name+".png")
-            plt.close()
         return sol, solvar

@@ -108,7 +108,8 @@ class GazeboCarNavEnvSimple(GazeboEnv):
     def dist_yaw(self):
         dx, dy = self.goal_pos[:2] - self.robot_pos[:2]
         angle_to_goal = np.arctan2(dy, dx)
-        return abs(angle_to_goal - self.robot_pos[2])
+        dist_yaw = abs(abs(angle_to_goal - self.robot_pos[2] + np.pi)%(2*np.pi)-np.pi)
+        return dist_yaw
     
     def reward(self):
         dist_goal = self.dist_xy()
@@ -393,8 +394,22 @@ class GazeboCarNavEnvSimple(GazeboEnv):
         
         # plot robot
         self.ax.scatter(self.robot_pos[0], self.robot_pos[1], color='g', marker='o')
-        d = 1 if self.robot_pos[2] == 0.0 else self.robot_pos[2] // np.abs(self.robot_pos[2])
-        self.ax.arrow(self.robot_pos[0], self.robot_pos[1], d, d*np.tan(self.robot_pos[2]), head_width=0.05, head_length=0.08, color='g')
+        yaw = self.robot_pos[2]
+        if yaw >=0 and yaw < 0.5*np.pi:
+            x_sgn = 1
+            y_sgn = 1
+        elif yaw >= 0.5*np.pi and yaw < np.pi:
+            x_sgn = -1
+            y_sgn = 1
+        elif yaw < 0 and yaw >= -0.5*np.pi:
+            x_sgn = 1
+            y_sgn = -1
+        else:
+            x_sgn = -1
+            y_sgn = -1
+        x_sgn *= 0.5/np.sqrt(1+np.tan(yaw)**2)
+        y_sgn *= 0.5*abs(np.tan(yaw))/np.sqrt(1+np.tan(yaw)**2)
+        self.ax.arrow(self.robot_pos[0], self.robot_pos[1], x_sgn, y_sgn, head_width=0.05, head_length=0.08, color='g')
         self.ax.arrow(self.robot_pos[0], self.robot_pos[1], self.goal_pos[0] - self.robot_pos[0], self.goal_pos[1] - self.robot_pos[1], head_width=0.05, head_length=0.08, color='r')
 
         self.ax.set_xlim(-self.layout.region_bound, self.layout.region_bound)
@@ -403,7 +418,10 @@ class GazeboCarNavEnvSimple(GazeboEnv):
         self.ax.set_yticks(np.linspace(-self.layout.region_bound, self.layout.region_bound, 6))
         self.ax.set_xlabel('x')
         self.ax.set_ylabel('y')
-        self.ax.set_title('reward: {0}, dist: {1}, angle: {2}'.format(np.round(reward, 4), np.round(self.dist_xy(), 4), np.round(self.dist_yaw(), 4)))
+        self.ax.set_title('reward: {0}, dist: {1}, yaw: {2}, angle: {3}'.format(np.round(reward, 4), 
+        np.round(self.dist_xy(), 4), 
+        np.round(self.robot_pos[2], 4),
+        np.round(self.dist_yaw(), 4)))
         
         plt.grid()
         plt.show(block=False)
@@ -414,11 +432,12 @@ class GazeboCarNavEnvSimple(GazeboEnv):
         batch_size = robot_state.shape[0]
         dist = np.repeat(np.inf, batch_size)
         if not self.stack_obs:
-            robot_x, robot_y = robot_pos[:, 0], robot_pos[:,1]
+            robot_x, robot_y = robot_state[:, 0], robot_state[:,1]
             for cyl in self.layout.cyls_pos:
                 dist = np.minimum(dist, np.hypot(np.repeat(cyl[0], batch_size)-robot_x, np.repeat(cyl[1], batch_size)-robot_y))
         else:
             for k in range(self.action_repeat):
+                robot_x, robot_y = robot_state[:, k*self.ego_obs_dim], robot_state[:, k*self.ego_obs_dim+1]
                 for cyl in self.layout.cyls_pos:
                     dist = np.minimum(dist, np.hypot(np.repeat(cyl[0], batch_size)-robot_x, np.repeat(cyl[1], batch_size)-robot_y))
         return np.where(dist <= np.repeat(self.layout.cost_region, batch_size), 1.0, 0.0)
