@@ -31,8 +31,6 @@ def run(config, args):
     dynamic_config["load_folder"] = args.load
 
     config["arguments"] = vars(args)
-    if not args.debug:
-        utils.wandb_update(config)
 
     state_dim, action_dim = env.observation_size, env.action_size
     if args.ensemble>0:
