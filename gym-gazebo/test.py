@@ -41,6 +41,7 @@ def run(config, args):
     mpc_controller = SafeMPC(env, mpc_config, cost_fn=env.cost_fn, reward_fn=env.reward_fn, n_ensembles=dynamic_config["n_ensembles"])
 
     # Prepare random collected dataset
+    print("start running ...")
     start_time = time.time()
     ep_len = 0
     obs, ep_ret, ep_cost, done = env.reset(), 0, 0, False
@@ -56,6 +57,7 @@ def run(config, args):
         ep_cost += info["cost"]
         obs = obs_next
         ep_len += 1
+        print("ep {0} : cost={1}, ret={2}".format(ep_len, info["cost"], reward))
     env.close()
 
     print("ep_cost: {0}, ep_ret: {1}, ep_len: {2}".format(ep_cost, ep_ret, ep_len))
