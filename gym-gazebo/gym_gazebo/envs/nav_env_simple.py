@@ -97,6 +97,9 @@ class GazeboCarNavEnvSimple(GazeboEnv):
         if self.config.render:
             self.fig, self.ax = plt.subplots()
             self.ax.set_aspect('equal', 'box')
+        
+        if self.config.record:
+            self.action_list = []
     
     def seed(self):
         ''' Set internal random state seeds '''
@@ -195,6 +198,7 @@ class GazeboCarNavEnvSimple(GazeboEnv):
             vel_cmd.linear.x = self.lvel_lim*action[0]
             vel_cmd.angular.z = self.rvel_lim*action[1]
             self.vel_pub.publish(vel_cmd)
+            self.action_list.append(vel_cmd)
 
             # get robot and obstacles states
             model_states = self.get_model_states()
@@ -411,7 +415,7 @@ class GazeboCarNavEnvSimple(GazeboEnv):
         x_sgn *= 0.5/np.sqrt(1+np.tan(yaw)**2)
         y_sgn *= 0.5*abs(np.tan(yaw))/np.sqrt(1+np.tan(yaw)**2)
         self.ax.arrow(self.robot_pos[0], self.robot_pos[1], x_sgn, y_sgn, head_width=0.05, head_length=0.08, color='g')
-        self.ax.arrow(self.robot_pos[0], self.robot_pos[1], self.goal_pos[0] - self.robot_pos[0], self.goal_pos[1] - self.robot_pos[1], head_width=0.05, head_length=0.08, color='r')
+        # self.ax.arrow(self.robot_pos[0], self.robot_pos[1], self.goal_pos[0] - self.robot_pos[0], self.goal_pos[1] - self.robot_pos[1], head_width=0.05, head_length=0.08, color='r')
 
         self.ax.set_xlim(-self.layout.region_bound, self.layout.region_bound)
         self.ax.set_ylim(-self.layout.region_bound, self.layout.region_bound)
@@ -419,10 +423,11 @@ class GazeboCarNavEnvSimple(GazeboEnv):
         self.ax.set_yticks(np.linspace(-self.layout.region_bound, self.layout.region_bound, 6))
         self.ax.set_xlabel('x')
         self.ax.set_ylabel('y')
-        self.ax.set_title('reward: {0}, dist: {1}, yaw: {2}, angle: {3}'.format(np.round(reward, 4), 
-        np.round(self.dist_xy(), 4), 
-        np.round(self.robot_pos[2], 4),
-        np.round(self.dist_yaw(), 4)))
+        self.ax.set_title('reward: {0}, dist to goal: {1}'.format(np.round(reward, 4), np.round(self.dist_xy(), 4))
+        # self.ax.set_title('reward: {0}, dist: {1}, yaw: {2}, angle: {3}'.format(np.round(reward, 4), 
+        # np.round(self.dist_xy(), 4), 
+        # np.round(self.robot_pos[2], 4),
+        # np.round(self.dist_yaw(), 4)))
         
         plt.grid()
         plt.show(block=False)

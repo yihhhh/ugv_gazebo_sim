@@ -9,6 +9,7 @@ env_config:
     rvel_lim: 1.0  # rotational velocity limit
 
     render: False
+    record: False
 
     env_0:
         region_bound: 2.5

@@ -1,5 +1,6 @@
 import argparse
 import numpy as np
+import os
 import torch
 import time
 from tqdm import tqdm
@@ -18,6 +19,8 @@ def run(config, args):
     env_config = config['env_config']
     if args.render:
         env_config['render'] = True
+    if args.record:
+        env_config['record'] = True
     env = gym.make("GazeboCarNav-v0", config=config['env_config'], layout=env_config[env_name])
     env.reset()
 
@@ -56,6 +59,8 @@ def run(config, args):
         obs = obs_next
         ep_len += 1
         print("ep {0} : cost={1}, ret={2}".format(ep_len, info["cost"], reward))
+    if args.record:
+        np.save(os.path.join(args.load, 'action_list.npy'), env.action_list)
     env.close()
 
     print("ep_cost: {0}, ep_ret: {1}, ep_len: {2}".format(ep_cost, ep_ret, ep_len))
@@ -64,7 +69,8 @@ if __name__ == '__main__':
     
     parser = argparse.ArgumentParser()
     parser.add_argument('--env_id', type=int, default=0, help="environment index")
-    parser.add_argument('--render','-r', action='store_true', help="render the environment")
+    parser.add_argument('--render', action='store_true', help="render the environment")
+    parser.add_argument('--record', action='store_true', help="record the vel_cmd")
     parser.add_argument('--load',type=str, default=None, help="load the trained dynamic model, data buffer, and cost model from a specified directory")
     parser.add_argument('--ensemble',type=int, default=0, help="number of model ensembles, if this argument is greater than 0, then it will replace the default ensembles number in config.yml") # number of ensembles
     parser.add_argument('--optimizer','-o',type=str, default="rce", help=" determine the optimizer, selected from `rce`, `cem`, or `random` ") # random, cem or CCE
