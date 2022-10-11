@@ -96,6 +96,7 @@ class GazeboCarNavEnvSimple(GazeboEnv):
 
         if self.config.render:
             self.fig, self.ax = plt.subplots()
+            self.ax = set_aspect('equal', 'box')
     
     def seed(self):
         ''' Set internal random state seeds '''
