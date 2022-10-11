@@ -198,7 +198,8 @@ class GazeboCarNavEnvSimple(GazeboEnv):
             vel_cmd.linear.x = self.lvel_lim*action[0]
             vel_cmd.angular.z = self.rvel_lim*action[1]
             self.vel_pub.publish(vel_cmd)
-            self.action_list.append(vel_cmd)
+            if self.config.record:
+                self.action_list.append(vel_cmd)
 
             # get robot and obstacles states
             model_states = self.get_model_states()
@@ -423,13 +424,14 @@ class GazeboCarNavEnvSimple(GazeboEnv):
         self.ax.set_yticks(np.linspace(-self.layout.region_bound, self.layout.region_bound, 6))
         self.ax.set_xlabel('x')
         self.ax.set_ylabel('y')
-        self.ax.set_title('reward: {0}, dist to goal: {1}'.format(np.round(reward, 4), np.round(self.dist_xy(), 4))
+        self.ax.set_title('reward: {0}, dist to goal: {1} m'.format(np.round(reward, 4), np.round(self.dist_xy(), 4)))
         # self.ax.set_title('reward: {0}, dist: {1}, yaw: {2}, angle: {3}'.format(np.round(reward, 4), 
         # np.round(self.dist_xy(), 4), 
         # np.round(self.robot_pos[2], 4),
         # np.round(self.dist_yaw(), 4)))
         
         plt.grid()
+        plt.get_current_fig_manager().window.setGeometry(100, 100, 640, 640)
         plt.show(block=False)
         plt.pause(0.0001)
 
