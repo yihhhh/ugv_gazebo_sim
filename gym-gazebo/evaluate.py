@@ -43,7 +43,6 @@ def run(config, args):
 
     # Prepare random collected dataset
     print("start running ...")
-    start_time = time.time()
     ep_len = 0
     obs, ep_ret, ep_cost, done = env.reset(), 0, 0, False
     mpc_controller.reset()

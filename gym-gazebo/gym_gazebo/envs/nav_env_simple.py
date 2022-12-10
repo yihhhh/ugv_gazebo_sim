@@ -119,7 +119,6 @@ class GazeboCarNavEnvSimple(GazeboEnv):
         dist_goal = self.dist_xy()
         angle_goal = self.dist_yaw()
         reward = (self.last_dist_goal - dist_goal) * self.reward_distance + (self.last_angle_goal - angle_goal) * self.reward_angle
-        # print("dist: {0}, angle: {1}, reward: {2}".format(self.last_dist_goal - dist_goal, self.last_angle_goal - angle_goal, reward))
         self.last_dist_goal = dist_goal
         self.last_angle_goal = angle_goal
         return reward
@@ -179,7 +178,6 @@ class GazeboCarNavEnvSimple(GazeboEnv):
         # x, y, yaw, xdot, ydot, yawdot, cos(yaw), sin(yaw), goal_x, goal_y, (obstacle state)
         # in world frame
         yaw = self.robot_pos[2]
-        # obs = np.concatenate([np.concatenate([self.robot_pos, self.robot_vel, [np.cos(yaw), np.sin(yaw)]]), self.goal_pos, self.cyls_pos.reshape(-1)])
         obs = np.concatenate([self.robot_pos, self.robot_vel, np.array([np.cos(yaw), np.sin(yaw)]).reshape(-1)])
         return obs
     
@@ -265,7 +263,6 @@ class GazeboCarNavEnvSimple(GazeboEnv):
 
         done = goal_met or collision or out_bound or self.t == self.config.max_episode_length
         info = {"cost":cost, "goal_met":goal_met}
-        # print("obs: {0}\nreward: {1}\ncost: {2}\ngoal_met: {3}\n\n".format(obs, reward, cost, goal_met))
 
         if self.stack_obs:
             return cat_obs, reward, done, info
@@ -470,6 +467,7 @@ class GazeboCarNavEnvSimple(GazeboEnv):
             reward = (dist - next_dist) * self.reward_distance + (angle - next_angle) * self.reward_angle
             reward += np.where(next_dist<=self.goal_region, self.reward_goal_met, 0)
             return reward
+            
         else:
             reward = 0.0
             for k in range(self.action_repeat):

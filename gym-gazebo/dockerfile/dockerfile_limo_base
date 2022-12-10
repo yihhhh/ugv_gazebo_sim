@@ -1,0 +1,41 @@
+FROM pytorch_ros:latest
+
+# change the defualt shell to bash
+SHELL ["/bin/bash", "-c"]
+
+RUN echo "alias start_mytorch='source ~/miniconda/bin/activate && conda activate mytorch'" >> ~/.bashrc
+
+# nvidia settings
+ENV NVIDIA_VISIBLE_DEVICES \
+    ${NVIDIA_VISIBLE_DEVICES:-all}
+ENV NVIDIA_DRIVER_CAPABILITIES \
+    ${NVIDIA_DRIVER_CAPABILITIES:+$NVIDIA_DRIVER_CAPABILITIES,}graphics
+
+# install git and apt-utils
+RUN apt-get update && apt-get install -y git
+
+# install py pkgs
+RUN source ~/miniconda/bin/activate && conda activate mytorch \
+ && conda install -y -c conda-forge gym \ 
+ && conda install -y -c conda-forge lightgbm \
+ && conda install -y -c conda-forge easydict \
+ && conda install -y -c conda-forge Cython \ 
+ && conda install -y -c conda-forge wandb \
+ && conda install -y -c anaconda make \
+ && pip install numpy==1.22.0 Cython pymap2d 
+
+# install tf-ros
+RUN apt-get install -y python-catkin-tools python3-dev python3-catkin-pkg-modules python3-numpy
+RUN mkdir -p /tf/src && cd /tf/src \
+ && git clone --single-branch -b melodic-devel https://github.com/ros/geometry \
+ && git clone --single-branch -b melodic-devel https://github.com/ros/geometry2 \
+ && ls /tf/src
+RUN apt-get install -y ros-melodic-tf2-bullet
+COPY tf2_bullet/CMakeLists.txt /tf/src/geometry2/tf2_bullet/CMakeLists.txt
+ 
+# create workspace
+RUN mkdir -p /limo_ws/src && cd /limo_ws/src
+RUN source /opt/ros/melodic/setup.bash && catkin_init_workspace
+RUN cd /limo_ws/src && git clone https://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@github.com/yihhhh/ugv_gazebo_sim.git
+
+WORKDIR /limo_ws

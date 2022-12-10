@@ -7,9 +7,6 @@ import csv
 from easydict import EasyDict
 import wandb
 
-import torch
-
-
 def wandb_init(project_name, group_id, exp_id):
     os.environ["WANDB_API_KEY"] = "1a2a4b937223367f6631a531c97f21d4f47b8356"
     os.environ["WANDB_SILENT"] = "true"

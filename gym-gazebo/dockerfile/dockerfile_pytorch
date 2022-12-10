@@ -1,0 +1,43 @@
+FROM nvidia_ros_melodic:latest
+
+# change the defualt shell to bash
+SHELL ["/bin/bash", "-c"]
+
+# Install some basic utilities
+RUN apt-get update && apt-get install -y \
+    curl \
+    ca-certificates \
+    sudo \
+    git \
+    bzip2 \
+    libx11-6 \
+    vim
+
+# Install Miniconda and Python 3.8
+RUN curl -sLo ~/miniconda.sh https://repo.continuum.io/miniconda/Miniconda3-py38_4.8.2-Linux-x86_64.sh \
+ && chmod +x ~/miniconda.sh \
+ && ~/miniconda.sh -b -p ~/miniconda \
+ && rm ~/miniconda.sh
+ 
+RUN source ~/miniconda/bin/activate \
+ && conda create -y -n mytorch python=3.8 \
+ && conda activate mytorch \
+ && conda update -y -n base -c defaults conda \
+ && conda install -y pytorch torchvision cudatoolkit=10.2 -c pytorch \
+ && conda install -y joblib \
+ && conda install -y matplotlib \
+ && conda install -y mpi4py \
+ && conda install -y psutil \
+ && conda install -y pyyaml \
+ && conda install -y tqdm \
+ && conda install -y seaborn \
+ && conda install -y -c conda-forge ros-rospy \
+ && conda install -y -c conda-forge gym \ 
+ && conda install -y -c conda-forge lightgbm \
+ && conda install -y -c conda-forge easydict \
+ && conda install -y -c conda-forge Cython \ 
+ && pip install numpy Cython pymap2d 
+
+  
+RUN echo "alias start_conda='source ~/miniconda/bin/activate'" >> ~/.bashrc
+RUN echo "alias close_conda='conda deactivate'" >> ~/.bashrc
